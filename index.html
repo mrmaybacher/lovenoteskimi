@@ -3,34 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LoveNotes MVP</title>
+    <title>LoveNotes - Everyday Magic</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&family=Dancing+Script:wght@400;700&display=swap');
         .font-handwritten { font-family: 'Playfair Display', serif; }
+        .font-script { font-family: 'Dancing Script', cursive; }
         .font-sans { font-family: 'Inter', sans-serif; }
         .fade-in { animation: fadeIn 0.5s ease-in; }
+        .slide-in { animation: slideIn 0.4s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .asset-card:hover { transform: translateY(-2px); transition: all 0.3s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .asset-card:hover { transform: translateY(-4px) scale(1.01); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .journey-node.completed { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
-        .journey-node.current { box-shadow: 0 0 20px rgba(240, 147, 251, 0.5); }
+        .journey-node.current { box-shadow: 0 0 20px rgba(240, 147, 251, 0.5); transform: scale(1.1); }
+        .history-panel { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-out; }
+        .history-panel.open { max-height: 300px; }
+        .confetti { animation: confetti-fall 3s linear infinite; }
+        @keyframes confetti-fall { 0% { transform: translateY(-100vh) rotate(0deg); } 100% { transform: translateY(100vh) rotate(720deg); } }
     </style>
 </head>
-<body class="bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 min-h-screen font-sans">
+<body class="bg-gradient-to-br from-slate-50 via-pink-50 to-purple-50 min-h-screen font-sans">
     
-    <header class="bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
+    <!-- Header -->
+    <header class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50">
         <div class="container mx-auto px-4 py-3">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <i class="fas fa-heart text-pink-500 text-xl"></i>
-                    <h1 class="text-lg font-semibold text-gray-800">LoveNotes</h1>
+                    <i class="fas fa-heart text-pink-500 text-2xl pulse-soft"></i>
+                    <h1 class="text-xl font-semibold text-gray-800">LoveNotes</h1>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <div class="hidden md:flex items-center space-x-2 text-sm">
+                    <div class="flex items-center space-x-2 text-sm bg-orange-50 px-3 py-1 rounded-full">
                         <i class="fas fa-fire text-orange-500"></i>
-                        <span class="text-gray-700" id="streak-display">🔥 0 day streak</span>
+                        <span class="text-gray-700 font-medium" id="streak-display">🔥 0 day streak</span>
                     </div>
+                    <button onclick="toggleHistory()" class="text-gray-600 hover:text-pink-500 relative">
+                        <i class="fas fa-history text-lg"></i>
+                        <span class="absolute -top-2 -right-2 bg-pink-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" id="history-count">0</span>
+                    </button>
                     <button onclick="openSettings()" class="text-gray-600 hover:text-pink-500">
                         <i class="fas fa-cog text-lg"></i>
                     </button>
@@ -39,112 +51,139 @@
         </div>
     </header>
 
+    <!-- History Panel -->
+    <div id="history-panel" class="history-panel bg-white/80 backdrop-blur-sm shadow-sm">
+        <div class="container mx-auto px-4 py-4 max-w-2xl">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-medium text-gray-700">Recently Sent</h3>
+                <button onclick="clearHistory()" class="text-xs text-gray-500 hover:text-pink-500">Clear</button>
+            </div>
+            <div id="history-list" class="space-y-2 max-h-48 overflow-y-auto"></div>
+        </div>
+    </div>
+
     <main class="container mx-auto px-4 py-6 max-w-2xl">
-        <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-4 mb-6 shadow-sm">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-medium text-gray-700">Your Journey</h2>
-                <span class="text-xs text-gray-500" id="progress-text">0 / 150 notes sent</span>
+        <!-- Journey Progress -->
+        <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-5 mb-6 shadow-lg border border-gray-100">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-semibold text-gray-800">Your Journey Together</h2>
+                <span class="text-sm text-gray-600" id="progress-text">0 / 150 notes sent</span>
             </div>
-            <div class="flex space-x-2 overflow-x-auto pb-2" id="journey-map">
-                <div class="journey-node w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 current">
-                    <i class="fas fa-seedling text-xs"></i>
+            <div class="flex space-x-3 overflow-x-auto pb-3" id="journey-map">
+                <div class="journey-node w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 current cursor-pointer" onclick="showMilestone(0)">
+                    <i class="fas fa-seedling text-sm"></i>
                 </div>
-                <div class="journey-node w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    <span class="text-xs">7d</span>
+                <div class="journey-node w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick="showMilestone(7)">
+                    <span class="text-xs font-bold">7</span>
                 </div>
-                <div class="journey-node w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    <span class="text-xs">30d</span>
+                <div class="journey-node w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick="showMilestone(30)">
+                    <span class="text-xs font-bold">30</span>
                 </div>
-                <div class="journey-node w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-gift text-xs"></i>
+                <div class="journey-node w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick="showMilestone(100)">
+                    <i class="fas fa-gift text-sm"></i>
                 </div>
-                <div class="journey-node w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    <i class="fas fa-crown text-xs"></i>
-                </div>
-            </div>
-            <div class="mt-3">
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-gradient-to-r from-pink-400 to-purple-500 h-2 rounded-full transition-all duration-500" style="width: 0%" id="progress-bar"></div>
+                <div class="journey-node w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 cursor-pointer" onclick="showMilestone(150)">
+                    <i class="fas fa-crown text-sm"></i>
                 </div>
             </div>
+            <div class="mt-4">
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                    <div class="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 h-3 rounded-full transition-all duration-700" style="width: 0%" id="progress-bar"></div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2" id="milestone-hint">Keep sending to unlock your first milestone!</p>
         </div>
 
-        <div id="personalization-banner" class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-4 mb-6 shadow-sm border border-purple-200 hidden">
+        <!-- Personalization Cue -->
+        <div id="personalization-banner" class="bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl p-4 mb-6 shadow-sm border border-purple-200 slide-in hidden">
             <div class="flex items-start space-x-3">
-                <i class="fas fa-sparkles text-purple-500 mt-1"></i>
+                <i class="fas fa-sparkles text-purple-500 mt-1 text-lg"></i>
                 <div>
-                    <h3 class="font-medium text-gray-800 text-sm">Make it more personal</h3>
-                    <p class="text-xs text-gray-600 mt-1">Add her name for even more meaningful notes.</p>
-                    <button onclick="openSettings()" class="text-xs text-purple-600 font-medium mt-2 hover:underline">Set up now →</button>
+                    <h3 class="font-semibold text-gray-800 text-sm">Make it unmistakably you</h3>
+                    <p class="text-xs text-gray-600 mt-1">Add her name and what makes her smile. Your notes will feel like you wrote them.</p>
+                    <button onclick="openSettings()" class="text-xs text-purple-600 font-semibold mt-2 hover:underline">Set up now →</button>
                 </div>
             </div>
         </div>
 
+        <!-- Today's Magic -->
         <div class="mb-4">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-sm font-medium text-gray-700">Today's Magic <span id="date-badge" class="text-xs text-gray-500"></span></h2>
-                <button onclick="refreshSuggestions()" class="text-pink-500 hover:text-pink-600 text-sm">
-                    <i class="fas fa-sync-alt"></i> Refresh
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center">
+                    <i class="fas fa-magic text-pink-500 mr-2"></i>
+                    Today's Magic <span id="date-badge" class="text-sm text-gray-500 ml-2"></span>
+                </h2>
+                <button onclick="refreshSuggestions()" class="bg-white/80 border border-pink-200 text-pink-600 px-4 py-2 rounded-full text-sm hover:bg-pink-50 transition">
+                    <i class="fas fa-sync-alt mr-2"></i>Refresh
                 </button>
             </div>
         </div>
 
-        <div id="asset-container" class="space-y-4"></div>
+        <!-- Asset Cards -->
+        <div id="asset-container" class="space-y-5"></div>
 
-        <div id="empty-state" class="text-center py-12 hidden">
-            <i class="fas fa-heart-broken text-4xl text-gray-300 mb-4"></i>
-            <h3 class="text-lg font-medium text-gray-600 mb-2">You've used all our notes!</h3>
-            <p class="text-sm text-gray-500">Reset the cycle or upgrade for unlimited access.</p>
-            <button onclick="resetLibrary()" class="mt-4 bg-pink-500 text-white px-6 py-2 rounded-full text-sm hover:bg-pink-600">
-                Start Fresh Cycle
+        <!-- Empty State -->
+        <div id="empty-state" class="text-center py-16 hidden">
+            <i class="fas fa-heart-broken text-5xl text-gray-300 mb-6"></i>
+            <h3 class="text-xl font-semibold text-gray-600 mb-3">You've used all our notes!</h3>
+            <p class="text-gray-500 mb-6">Ready for a fresh cycle of magic?</p>
+            <button onclick="resetLibrary()" class="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-8 py-3 rounded-full font-medium hover:shadow-lg">
+                <i class="fas fa-sync-alt mr-2"></i>Start Fresh Cycle
             </button>
         </div>
 
-        <div id="paywall" class="bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-pink-200 hidden">
+        <!-- Paywall -->
+        <div id="paywall" class="bg-white/95 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-pink-200 hidden">
             <div class="text-center">
-                <i class="fas fa-crown text-3xl text-yellow-500 mb-3"></i>
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">You've Sent 7 Beautiful Notes!</h3>
-                <p class="text-sm text-gray-600 mb-4">Join hundreds of thoughtful partners who never run out of magic words.</p>
-                <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 mb-4">
-                    <ul class="text-sm text-gray-700 space-y-2 text-left">
-                        <li><i class="fas fa-check text-green-500 mr-2"></i>150+ curated, never-repeating notes</li>
-                        <li><i class="fas fa-check text-green-500 mr-2"></i>Unlock special occasion collections</li>
-                        <li><i class="fas fa-check text-green-500 mr-2"></i>Cancel anytime, pause and resume</li>
+                <div class="mb-6">
+                    <i class="fas fa-crown text-5xl text-yellow-500 mb-4"></i>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3">You've Sent 7 Beautiful Notes!</h3>
+                    <p class="text-gray-600 mb-6">You're on fire. Keep the magic going?</p>
+                </div>
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-6 border border-purple-200">
+                    <ul class="text-sm text-gray-700 space-y-3 text-left">
+                        <li class="flex items-start"><i class="fas fa-check text-green-500 mr-3 mt-1"></i>150+ curated notes that feel like you wrote them</li>
+                        <li class="flex items-start"><i class="fas fa-check text-green-500 mr-3 mt-1"></i>Special occasion packs (anniversary, "I'm sorry", long distance)</li>
+                        <li class="flex items-start"><i class="fas fa-check text-green-500 mr-3 mt-1"></i>Never repeat until you want to</li>
+                        <li class="flex items-start"><i class="fas fa-check text-green-500 mr-3 mt-1"></i>Pause anytime, keep your progress</li>
                     </ul>
                 </div>
-                <button onclick="subscribe()" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-full font-medium hover:shadow-lg">
-                    Start Free 3-Day Trial
-                </button>
-                <p class="text-xs text-gray-500 mt-3">$4.99/month after trial. Free forever plan has 7 notes/cycle.</p>
+                <div class="space-y-3">
+                    <button onclick="subscribe()" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-4 rounded-full font-semibold text-lg hover:shadow-xl">
+                        <i class="fas fa-sparkles mr-2"></i>Start Free 3-Day Trial
+                    </button>
+                    <p class="text-xs text-gray-500">$4.99/month after. Cancel in one tap. Free plan has 7 notes/cycle.</p>
+                </div>
             </div>
         </div>
     </main>
 
-    <div id="settings-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black/60 backdrop-blur-md z-50 hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-2xl w-full max-w-md p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-800">Personalization</h3>
-                    <button onclick="closeSettings()" class="text-gray-500 hover:text-gray-700">
+            <div class="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-gray-100">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-800">Make It Personal</h3>
+                    <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600 text-xl">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div class="space-y-4">
+                <div class="space-y-5">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Her Name</label>
-                        <input type="text" id="partner-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="Sarah">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Her Name</label>
+                        <input type="text" id="partner-name" class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="e.g., Sarah">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Pet Name (optional)</label>
-                        <input type="text" id="pet-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="Pumpkin">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Your Pet Name for Her (Optional)</label>
+                        <input type="text" id="pet-name" class="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-500" placeholder="e.g., Pumpkin, love, beautiful">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Her Interests (select 3-5)</label>
-                        <div class="grid grid-cols-2 gap-2" id="interests-grid"></div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">What Makes Her Light Up? (Pick 3-5)</label>
+                        <div class="grid grid-cols-2 gap-3" id="interests-grid"></div>
                     </div>
                     <div class="pt-4">
-                        <button onclick="saveSettings()" class="w-full bg-pink-500 text-white py-2 rounded-lg font-medium hover:bg-pink-600">
-                            Save & Apply Magic
+                        <button onclick="saveSettings()" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg">
+                            <i class="fas fa-heart mr-2"></i>Save & Sprinkle Magic
                         </button>
                     </div>
                 </div>
@@ -152,71 +191,70 @@
         </div>
     </div>
 
-    <div id="toast" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm hidden">
-        <i class="fas fa-check mr-2"></i><span id="toast-message">Copied to clipboard!</span>
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full text-sm shadow-2xl hidden z-50">
+        <i class="fas fa-check mr-2"></i><span id="toast-message"></span>
     </div>
 
     <script>
         const STORAGE_KEYS = {
-            USER: 'lovenotes_user',
-            LIBRARY: 'lovenotes_library_state',
-            SENT: 'lovenotes_sent_queue'
+            USER: 'lovenotes_user_v2',
+            LIBRARY: 'lovenotes_library_v2',
+            SENT: 'lovenotes_sent_v2',
+            HISTORY: 'lovenotes_history_v2'
         };
 
-        const CONTENT_LIBRARY = [
-            { id: 't1', type: 'text', category: 'playful', content: "I saw something today that made me think of you... then everything started reminding me of you.", source: "Original", tags: ['daily'] },
-            { id: 't2', type: 'text', category: 'deep', content: "Being with you feels like that moment you take your shoes off after a long day — pure relief.", source: "Original", tags: ['comfort'] },
-            { id: 't3', type: 'text', category: 'teasing', content: "You're weird. I like it. Don't change.", source: "Original", tags: ['funny'] },
-            { id: 't4', type: 'text', category: 'sweet', content: "If someone had told me a year ago I'd be this happy, I would've called them crazy.", source: "Original", tags: ['gratitude'] },
-            { id: 't5', type: 'text', category: 'missing', content: "My bed feels too big without you in it. Hurry home.", source: "Original", tags: ['lonely'] },
-            { id: 't6', type: 'text', category: 'appreciation', content: "You make ordinary moments feel like memories I'll cherish.", source: "Original", tags: ['presence'] },
-            { id: 't7', type: 'text', category: 'morning', content: "Morning coffee's good. Morning coffee thinking of you is better.", source: "Original", tags: ['start-of-day'] },
-            { id: 't8', type: 'text', category: 'support', content: "Whatever you're facing today, remember you're the strongest person I know.", source: "Original", tags: ['encouraging'] },
-            { id: 't9', type: 'text', category: 'random', content: "The way you scrunch your nose when you laugh is what I picture when I need to smile.", source: "Original", tags: ['specific'] },
-            { id: 't10', type: 'text', category: 'night', content: "Sleep well, dream sweet. If you dream of me, try not to wake me up — I'm probably dreaming of you too.", source: "Original", tags: ['bedtime'] },
-            ...Array.from({length: 20}, (_, i) => ({
-                id: `t${i+11}`, type: 'text', category: ['sweet','playful','deep','teasing','support'][i%5], 
-                content: ["You're my favorite notification.", "Life's messy. You make it fun.", "I don't say it enough, but thank you.", "Your mind is my favorite place to get lost in.", "Proud of you, always."][i%5] + ` #thought${i}`, 
-                source: "Original", tags: ['daily']
-            })),
-            { id: 'p1', type: 'poem', category: 'romantic', content: "You are the quiet moment\nin a loud world,\nthe deep breath\nI didn't know I needed.", source: "Original Poetry", tags: ['serious'] },
-            { id: 'p2', type: 'poem', category: 'simple', content: "I wrote this\nbetween meetings,\nbut thinking of you\nfelt like the most\nimportant thing I did today.", source: "Original Poetry", tags: ['real'] },
-            { id: 'p3', type: 'poem', category: 'funny', content: "Roses are red,\nViolets are blue,\nI burned the dinner,\nbut I'd still\ncook for you.", source: "Classic (Modified)", tags: ['humor'] },
-            { id: 'p4', type: 'poem', category: 'gratitude', content: "For every small thing\nyou do that you think\nI don't notice —\nI do.\nAnd I store them\nlike secret treasures.", source: "Original Poetry", tags: ['appreciation'] },
-            { id: 'p5', type: 'poem', category: 'longing', content: "Distance is just space.\nSpace that can't hold\nwhat we have.\nSee you soon.", source: "Original Poetry", tags: ['hopeful'] },
-            ...Array.from({length: 25}, (_, i) => ({
-                id: `p${i+6}`, type: 'poem', category: ['romantic','simple','gratitude','playful','deep'][i%5],
-                content: `Line one for you,\nLine two thinking of you,\nLine three can't wait,\nLine four — you're great.\n#poem${i}`,
-                source: "Daily Thoughts", tags: ['quick-read']
-            })),
-            { id: 's1', type: 'saying', category: 'wise', content: "A good relationship is like a cozy fire: it warms you, but you have to keep feeding it small logs, not big expectations.", source: "Folk Wisdom", tags: ['metaphor'] },
-            { id: 's2', type: 'saying', category: 'humorous', content: "Love is sharing your popcorn even when you said you weren't hungry.", source: "Modern Proverb", tags: ['relatable'] },
-            { id: 's3', type: 'saying', category: 'truth', content: "The right person won't complete you — they'll make you feel complete already.", source: "Contemporary Wisdom", tags: ['healthy'] },
-            { id: 's4', type: 'saying', category: 'daily', content: "Checking in is sexy. 'How's your day?' is foreplay.", source: "Real Talk", tags: ['communication'] },
-            { id: 's5', type: 'saying', category: 'comfort', content: "You don't need to be perfect. You just need to be present.", source: "Therapy Insight", tags: ['acceptance'] },
-            ...Array.from({length: 25}, (_, i) => ({
-                id: `s${i+6}`, type: 'saying', category: ['wise','humorous','truth','daily','comfort'][i%5],
-                content: ["Small things are big things in disguise.", "Listen with your heart, not just your ears.", "Laughter is the real love language.", "Be her calm, not her storm.", "Consistency > Grand gestures"][i%5] + ".",
-                source: "Collected Wisdom", tags: ['quotable']
-            }))
+        const AUTHENTIC_CONTENT = [
+            // TEXTS - Genuine, conversational, masculine voice
+            { id: 't1', type: 'text', category: 'real-talk', content: "Just saw someone wear that blue sweater you love. Instantly messaged you. That's how deep you live in my head.", source: "Your Voice", tone: 'observant' },
+            { id: 't2', type: 'text', category: 'intimate', content: "The way you smell after a shower is my favorite drug. Don't ever change shampoo.", source: "Honest Thoughts", tone: 'raw' },
+            { id: 't3', type: 'text', category: 'teasing', content: "You're weird. I like it. Don't change. Ever.", source: "Inside Joke", tone: 'playful' },
+            { id: 't4', type: 'text', category: 'grateful', content: "If someone told me last year I'd be this happy, I'd have called them crazy. Glad I'm crazy now.", source: "Reflection", tone: 'vulnerable' },
+            { id: 't5', type: 'text', category: 'missing', content: "My bed's too big without you. Hurry home so I can be your pillow.", source: "Late Night", tone: 'needy' },
+            { id: 't6', type: 'text', category: 'appreciation', content: "You make ordinary moments feel like memories I'll actually remember. Not everyone does that.", source: "Observation", tone: 'deep' },
+            { id: 't7', type: 'text', category: 'casual', content: "Morning coffee's good. Morning coffee thinking of you is better.", source: "Routine", tone: 'easy' },
+            { id: 't8', type: 'text', category: 'support', content: "Whatever you're facing today, you're the strongest person I know. Annoyingly so.", source: "Pep Talk", tone: 'firm' },
+            { id: 't9', type: 'text', category: 'specific', content: "The way you scrunch your nose when you laugh is what I picture when I need to smile. It's a stupidly specific superpower.", source: "Stored Memory", tone: 'detailed' },
+            { id: 't10', type: 'text', category: 'bedtime', content: "Sleep well. If you dream of me, try not to wake me up—I'm probably dreaming of you too.", source: "Goodnight", tone: 'sweet' },
+            { id: 't11', type: 'text', category: 'cheeky', content: "Your butt is a work of art. Seriously. Should be in a museum. *Our* museum.", source: "Private Encore", tone: 'spicy' },
+            
+            // POEMS - Short, modern, imperfect
+            { id: 'p1', type: 'poem', category: 'raw', content: "You are the quiet moment\nin a loud world—\nthe deep breath\nI never knew I needed.", source: "Your Heart", tone: 'simple' },
+            { id: 'p2', type: 'poem', category: 'real', content: "Wrote this between meetings.\nThinking of you\nfelt like the most\nimportant thing I did today.", source: "Stolen Minute", tone: 'honest' },
+            { id: 'p3', type: 'poem', category: 'funny', content: "Roses are red,\nViolets are blue,\nI burned the dinner,\nbut I'd still cook for you.", source: "Kitchen Disaster", tone: 'self-aware' },
+            { id: 'p4', type: 'poem', category: 'treasured', content: "Every small thing you do\nthat you think I don't notice?\nI do.\nI store them like secret treasures.", source: "Hidden Glimpses", tone: 'grateful' },
+            { id: 'p5', type: 'poem', category: 'long-distance', content: "Distance is just space\nthat can't hold what we have.\nSee you soon.\n(Not soon enough.)", source: "Countdown", tone: 'hopeful' },
+            
+            // SAYINGS - Modern wisdom, not cliché
+            { id: 's1', type: 'saying', category: 'truth', content: "A good relationship is like a cozy fire: it warms you, but you have to keep feeding it small logs, not big expectations.", source: "Real Talk", tone: 'grounded' },
+            { id: 's2', type: 'saying', category: 'modern', content: "Love is sharing your popcorn even when you said you weren't hungry. That's the real test.", source: "Theater Wisdom", tone: 'relatable' },
+            { id: 's3', type: 'saying', category: 'healthy', content: "The right person won't complete you—they'll make you feel complete already. Huge difference.", source: "Growth", tone: 'mindful' },
+            { id: 's4', type: 'saying', category: 'communication', content: "Checking in is sexy. 'How's your day?' is foreplay. Fight me on this.", source: "Daily Ritual", tone: 'bold' },
+            { id: 's5', type: 'saying', category: 'presence', content: "You don't need to be perfect. You just need to be present. And maybe bring snacks.", source: "Therapy Notes", tone: 'real' },
         ];
 
-        const MEME_AND_IMAGE_DESCRIPTIONS = Array.from({length: 60}, (_, i) => ({
-            id: `m${i+1}`, type: i < 30 ? 'meme' : 'image', 
-            category: ['funny','cute','relatable','silly','sweet','scenic','cozy','artistic'][i%8],
-            content: i < 30 ? 
-                `Meme: ${["Distracted boyfriend looking at 'Her Smile'","Drake rejecting 'Generic Compliments' / approving 'Specific Inside Jokes'","Woman yelling at cat: 'I said I love you'/ cat: 'I know, I'm processing'","Expanding brain: 'She's hot' → 'She's smart' → 'She's kind' → 'She's home'","Two buttons: 'Be productive' vs. 'Think about her'"][i%5]} #${i}` :
-                `Image: ${["Hands holding coffee cups on a rainy window sill","Two pairs of feet on a park bench, autumn leaves","Sunset silhouette of a couple walking","Close-up of intertwined fingers","A single flower in a mason jar on a wooden table"][i%5]} - warm filter`,
-            source: "Curated Visuals", tags: ['visual']
-        }));
+        // REAL IMAGES - Unsplash links curated for authentic feel
+        const VISUAL_ASSETS = [
+            { id: 'img1', type: 'image', category: 'cozy', url: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=800&h=600&fit=crop', description: "Morning coffee in bed, her favorite kind of lazy" },
+            { id: 'img2', type: 'image', category: 'intimate', url: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&h=600&fit=crop', description: "Her laugh lines when you say something stupid" },
+            { id: 'img3', type: 'image', category: 'sweet', url: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&h=600&fit=crop', description: "Hands intertwined, your favorite hand-hold" },
+            { id: 'img4', type: 'image', category: 'playful', url: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&h=600&fit=crop', description: "That face she makes when she's thinking" },
+            { id: 'img5', type: 'image', category: 'sexy', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=600&fit=crop', description: "The way she looks at you before she kisses you" },
+            { id: 'img6', type: 'image', category: 'comfort', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800&h=600&fit=crop', description: "Her 'I'm home' smile after a long day" },
+            { id: 'img7', type: 'image', category: 'everyday', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&h=600&fit=crop', description: "Her morning hair, your favorite mess" },
+            { id: 'img8', type: 'image', category: 'romantic', url: 'https://images.unsplash.com/photo-1524504388940-b1c172265539?w=800&h=600&fit=crop', description: "Sunset walks where you talk about everything and nothing" },
+            { id: 'img9', type: 'image', category: 'funny', url: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&h=600&fit=crop', description: "That scrunched nose when she's trying not to laugh" },
+            { id: 'img10', type: 'image', category: 'treasured', url: 'https://images.unsplash.com/photo-1474552226712-ac0f0961c594?w=800&h=600&fit=crop', description: "Rainy days inside with her, your favorite plans" },
+        ];
 
-        const FULL_LIBRARY = [...CONTENT_LIBRARY, ...MEME_AND_IMAGE_DESCRIPTIONS];
+        const FULL_LIBRARY = [...AUTHENTIC_CONTENT, ...VISUAL_ASSETS];
 
         let state = {
             user: { partnerName: '', petName: '', interests: [], subscription: 'free', trialStart: null, sentCount: 0, streakDays: 0, lastSentDate: null },
             library: [...FULL_LIBRARY],
             sentQueue: [],
-            currentSuggestions: []
+            currentSuggestions: [],
+            history: []
         };
 
         function init() {
@@ -225,29 +263,31 @@
             updateUI();
             generateSuggestions();
             updateDateBanner();
+            renderHistory();
             
-            if (!state.user.partnerName && state.user.sentCount < 3) {
+            if (!state.user.partnerName) {
                 document.getElementById('personalization-banner').classList.remove('hidden');
             }
         }
 
         function getNextAssets(count = 3) {
             if (state.library.length === 0) {
-                document.getElementById('asset-container').classList.add('hidden');
-                document.getElementById('empty-state').classList.remove('hidden');
+                showEmptyState();
                 return [];
             }
 
             if (state.user.subscription === 'free' && state.user.sentCount >= 7) {
-                document.getElementById('asset-container').classList.add('hidden');
-                document.getElementById('paywall').classList.remove('hidden');
+                showPaywall();
                 return [];
             }
 
             const assets = [];
-            for (let i = 0; i < count && state.library.length > 0; i++) {
-                const randomIndex = Math.floor(Math.random() * state.library.length);
-                const asset = state.library.splice(randomIndex, 1)[0];
+            const available = state.library.filter(a => !a.used);
+            
+            for (let i = 0; i < count && available.length > 0; i++) {
+                const randomIndex = Math.floor(Math.random() * available.length);
+                const asset = available[randomIndex];
+                asset.used = true;
                 assets.push(personalizeAsset(asset));
                 state.sentQueue.push(asset);
             }
@@ -258,22 +298,16 @@
 
         function personalizeAsset(asset) {
             const name = state.user.petName || state.user.partnerName;
-            if (name && Math.random() > 0.5) {
-                const variations = [
-                    `${asset.content} — ${name}`,
-                    `${name}, ${asset.content.toLowerCase()}`,
-                    `For ${name}: ${asset.content}`
+            if (name && Math.random() > 0.4 && asset.type === 'text') {
+                const intros = [
+                    `${name},`,
+                    `For my ${name}:`,
+                    `Hey ${name} —`,
+                    `Thinking of you, ${name}:`
                 ];
-                return { ...asset, content: variations[Math.floor(Math.random() * variations.length)] };
+                return { ...asset, content: `${intros[Math.floor(Math.random() * intros.length)]} ${asset.content}` };
             }
             return asset;
-        }
-
-        function refreshSuggestions() {
-            state.currentSuggestions.forEach(asset => state.library.push(asset));
-            state.currentSuggestions = [];
-            generateSuggestions();
-            showToast('New suggestions loaded!');
         }
 
         function generateSuggestions() {
@@ -285,49 +319,65 @@
             const container = document.getElementById('asset-container');
             container.innerHTML = '';
             
-            if (state.currentSuggestions.length === 0) return;
-
             state.currentSuggestions.forEach((asset, index) => {
-                const card = document.createElement('div');
-                card.className = 'asset-card bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-gray-100 fade-in';
-                card.style.animationDelay = `${index * 0.1}s`;
+                const card = createAssetCard(asset, index);
+                container.appendChild(card);
+            });
+        }
 
-                const categoryIcon = {
-                    text: 'fa-comment', poem: 'fa-scroll', saying: 'fa-quote-left', meme: 'fa-image', image: 'fa-camera'
-                }[asset.type];
+        function createAssetCard(asset, index) {
+            const card = document.createElement('div');
+            card.className = 'asset-card bg-white/90 backdrop-blur-sm rounded-3xl shadow-lg border border-gray-100 overflow-hidden fade-in';
+            card.style.animationDelay = `${index * 0.15}s`;
 
-                const categoryColor = {
-                    text: 'text-blue-500', poem: 'text-purple-500', saying: 'text-green-500', meme: 'text-orange-500', image: 'text-pink-500'
-                }[asset.type];
+            const categoryIcon = {
+                text: 'fa-comment-dots', poem: 'fa-scroll', saying: 'fa-quote-left', image: 'fa-camera'
+            }[asset.type];
 
-                card.innerHTML = `
-                    <div class="flex items-start justify-between mb-3">
-                        <div class="flex items-center space-x-2">
-                            <i class="fas ${categoryIcon} ${categoryColor}"></i>
-                            <span class="text-xs text-gray-500 capitalize">${asset.category}</span>
+            const categoryColor = {
+                text: 'text-blue-500', poem: 'text-purple-500', saying: 'text-green-500', image: 'text-pink-500'
+            }[asset.type];
+
+            card.innerHTML = `
+                <div class="p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-r from-pink-100 to-purple-100 flex items-center justify-center">
+                                <i class="fas ${categoryIcon} ${categoryColor} text-sm"></i>
+                            </div>
+                            <span class="text-xs font-medium text-gray-600 capitalize bg-gray-100 px-2 py-1 rounded-full">${asset.category}</span>
                         </div>
                         <span class="text-xs text-gray-400">${asset.source}</span>
                     </div>
-                    <div class="mb-4">
+                    
+                    ${asset.type === 'image' 
+                        ? `<div class="mb-4 rounded-2xl overflow-hidden"><img src="${asset.url}" alt="${asset.description}" class="w-full h-48 object-cover"></div>`
+                        : ''
+                    }
+                    
+                    <div class="mb-5">
                         ${asset.type === 'poem' 
-                            ? `<div class="font-handwritten text-gray-800 whitespace-pre-line leading-relaxed">${asset.content}</div>` 
-                            : `<p class="text-gray-800">${asset.content}</p>`
+                            ? `<div class="font-handwritten text-gray-800 whitespace-pre-line leading-relaxed text-lg">${asset.content}</div>` 
+                            : asset.type === 'image'
+                            ? `<p class="text-sm text-gray-600 italic">${asset.description}</p>`
+                            : `<p class="text-gray-800 leading-relaxed">${asset.content}</p>`
                         }
                     </div>
+                    
                     <div class="flex space-x-3">
-                        <button onclick="copyAsset('${asset.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm transition flex items-center justify-center space-x-2">
+                        <button onclick="copyAsset('${asset.id}')" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-2xl text-sm font-medium transition flex items-center justify-center space-x-2">
                             <i class="fas fa-copy"></i>
                             <span>Copy</span>
                         </button>
-                        <button onclick="shareAsset('${asset.id}')" class="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:shadow-md text-white py-2 px-3 rounded-lg text-sm transition flex items-center justify-center space-x-2 share-btn">
-                            <i class="fas fa-share"></i>
-                            <span>Share</span>
+                        <button onclick="shareAsset('${asset.id}')" class="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:shadow-lg text-white py-3 px-4 rounded-2xl text-sm font-medium transition flex items-center justify-center space-x-2 share-btn">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Send to Her</span>
                         </button>
                     </div>
-                `;
+                </div>
+            `;
 
-                container.appendChild(card);
-            });
+            return card;
         }
 
         async function copyAsset(assetId) {
@@ -335,11 +385,12 @@
             if (!asset) return;
 
             try {
-                await navigator.clipboard.writeText(asset.content);
+                await navigator.clipboard.writeText(asset.content || asset.description);
                 showToast('Copied to clipboard!');
+                addToHistory(asset);
                 markAsSent();
             } catch (err) {
-                showToast('Copy failed. Try sharing instead.');
+                showToast('Copy failed. Try sending instead.');
             }
         }
 
@@ -347,26 +398,90 @@
             const asset = state.currentSuggestions.find(a => a.id === assetId);
             if (!asset) return;
 
+            const shareText = asset.content || asset.description;
+            
             if (navigator.share) {
                 navigator.share({
-                    title: 'A note for you 💕',
-                    text: asset.content
+                    title: 'For you 💕',
+                    text: shareText
                 }).then(() => {
-                    showToast('Shared successfully!');
+                    showToast('Sent! Hope she smiles.');
+                    addToHistory(asset);
                     markAsSent();
+                    celebrateSend();
                 }).catch(() => {
-                    fallbackShare(asset.content);
+                    fallbackShare(shareText, asset);
                 });
             } else {
-                fallbackShare(asset.content);
+                fallbackShare(shareText, asset);
             }
         }
 
-        function fallbackShare(text) {
+        function fallbackShare(text, asset) {
             const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
             window.open(whatsappUrl, '_blank');
             showToast('Opening WhatsApp...');
+            addToHistory(asset);
             markAsSent();
+            celebrateSend();
+        }
+
+        function addToHistory(asset) {
+            const historyItem = {
+                id: asset.id + '_sent_' + Date.now(),
+                content: asset.content || asset.description,
+                type: asset.type,
+                timestamp: new Date().toLocaleString(),
+                date: new Date().toDateString()
+            };
+            
+            state.history.unshift(historyItem);
+            if (state.history.length > 5) state.history.pop();
+            
+            renderHistory();
+            saveState();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            const count = document.getElementById('history-count');
+            
+            if (!container) return;
+            
+            container.innerHTML = '';
+            count.textContent = state.history.length;
+            
+            if (state.history.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">No notes sent yet</p>';
+                return;
+            }
+            
+            state.history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex items-start space-x-3 p-3 bg-white/60 rounded-xl border border-gray-100';
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-r from-pink-100 to-purple-100 flex items-center justify-center flex-shrink-0">
+                        <i class="fas ${item.type === 'image' ? 'fa-camera' : 'fa-comment'} text-pink-500 text-xs"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-gray-700 truncate">${item.content.substring(0, 60)}${item.content.length > 60 ? '...' : ''}</p>
+                        <p class="text-xs text-gray-400 mt-1">${item.timestamp}</p>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function toggleHistory() {
+            const panel = document.getElementById('history-panel');
+            panel.classList.toggle('open');
+        }
+
+        function clearHistory() {
+            state.history = [];
+            renderHistory();
+            saveState();
+            showToast('History cleared');
         }
 
         function markAsSent() {
@@ -391,7 +506,7 @@
             const yesterday = new Date(Date.now() - 86400000).toDateString();
             
             if (state.user.lastSentDate === today) {
-                // Already sent today, streak is active
+                // Already sent today
             } else if (state.user.lastSentDate === yesterday) {
                 state.user.streakDays++;
             } else {
@@ -400,37 +515,60 @@
         }
 
         function updateUI() {
+            // Streak
             const streakDisplay = document.getElementById('streak-display');
             streakDisplay.innerHTML = state.user.streakDays > 0 
                 ? `<i class="fas fa-fire text-orange-500"></i> 🔥 ${state.user.streakDays} day streak`
                 : `<i class="fas fa-fire text-gray-400"></i> Send your first note!`;
 
-            const progressText = document.getElementById('progress-text');
-            progressText.textContent = `${state.user.sentCount} / 150 notes sent`;
-            
+            // Progress
+            document.getElementById('progress-text').textContent = `${state.user.sentCount} / 150 notes sent`;
             const progressBar = document.getElementById('progress-bar');
             progressBar.style.width = `${Math.min((state.user.sentCount / 150) * 100, 100)}%`;
 
+            // Journey nodes
             const nodes = document.querySelectorAll('.journey-node');
             const milestones = [0, 7, 30, 100, 150];
             nodes.forEach((node, index) => {
                 if (state.user.sentCount >= milestones[index]) {
                     node.classList.add('completed');
                     node.classList.remove('current');
-                }
-                if (state.user.sentCount < milestones[1]) {
-                    nodes[0].classList.add('current');
+                } else {
+                    node.classList.remove('completed');
+                    if (index === 0 || state.user.sentCount < milestones[index]) {
+                        node.classList.add('current');
+                    }
                 }
             });
 
-            if (state.user.partnerName) {
+            // Hide banner after first send
+            if (state.user.sentCount > 0) {
                 document.getElementById('personalization-banner').classList.add('hidden');
             }
         }
 
-        function updateDateBanner() {
-            const today = new Date().toLocaleDateString('en-US', { weekday: 'short' });
-            document.getElementById('date-badge').textContent = `— ${today}`;
+        function showMilestone(count) {
+            const messages = {
+                0: "Every journey starts with a single note. Send your first!",
+                7: "7 notes! You're building a habit. Keep going.",
+                30: "30 notes! This is becoming part of your DNA.",
+                100: "100 notes! You're in the top 1% of thoughtful partners.",
+                150: "150 notes! You've mastered the art of showing up."
+            };
+            showToast(messages[count] || "Keep sending!");
+        }
+
+        function celebrateSend() {
+            // Simple confetti effect
+            const colors = ['#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
+            for (let i = 0; i < 10; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti fixed top-0 w-2 h-2 bg-pink-500 pointer-events-none';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3000);
+            }
         }
 
         function subscribe() {
@@ -444,7 +582,7 @@
         }
 
         function resetLibrary() {
-            state.library = [...FULL_LIBRARY, ...state.sentQueue];
+            state.library = [...FULL_LIBRARY.map(a => ({...a, used: false}))];
             state.sentQueue = [];
             state.user.sentCount = 0;
             saveState();
@@ -453,7 +591,7 @@
             document.getElementById('asset-container').classList.remove('hidden');
             generateSuggestions();
             updateUI();
-            showToast('Library refreshed!');
+            showToast('Fresh cycle started!');
         }
 
         function openSettings() {
@@ -473,15 +611,15 @@
         }
 
         function renderInterests() {
-            const interests = ['Books', 'Coffee', 'Travel', 'Music', 'Food', 'Nature', 'Art', 'Fitness', 'Movies', 'Animals'];
+            const interests = ['Books', 'Coffee', 'Travel', 'Music', 'Food', 'Nature', 'Art', 'Wine', 'Movies', 'Animals', 'Photography', 'Dancing'];
             const grid = document.getElementById('interests-grid');
             
             interests.forEach(interest => {
                 const label = document.createElement('label');
-                label.className = 'flex items-center space-x-2 cursor-pointer';
+                label.className = 'flex items-center space-x-3 p-2 rounded-lg hover:bg-pink-50 cursor-pointer transition';
                 label.innerHTML = `
-                    <input type="checkbox" value="${interest}" class="text-pink-500 focus:ring-pink-500">
-                    <span class="text-sm text-gray-700">${interest}</span>
+                    <input type="checkbox" value="${interest}" class="text-pink-500 focus:ring-pink-500 rounded">
+                    <span class="text-sm text-gray-700 font-medium">${interest}</span>
                 `;
                 grid.appendChild(label);
             });
@@ -506,30 +644,48 @@
             saveState();
             updateUI();
             closeSettings();
-            showToast('Settings saved! Notes will feel more personal.');
+            showToast('Settings saved! Your notes will feel like you.');
+        }
+
+        function updateDateBanner() {
+            const today = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            document.getElementById('date-badge').textContent = `— ${today}`;
         }
 
         function showToast(message) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-message').textContent = message;
             toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 3000);
+            setTimeout(() => toast.classList.add('hidden'), 4000);
+        }
+
+        function showEmptyState() {
+            document.getElementById('asset-container').classList.add('hidden');
+            document.getElementById('empty-state').classList.remove('hidden');
+        }
+
+        function showPaywall() {
+            document.getElementById('asset-container').classList.add('hidden');
+            document.getElementById('paywall').classList.remove('hidden');
         }
 
         function saveState() {
             localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(state.user));
             localStorage.setItem(STORAGE_KEYS.LIBRARY, JSON.stringify(state.library));
             localStorage.setItem(STORAGE_KEYS.SENT, JSON.stringify(state.sentQueue));
+            localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(state.history));
         }
 
         function loadState() {
             const userData = localStorage.getItem(STORAGE_KEYS.USER);
             const libraryData = localStorage.getItem(STORAGE_KEYS.LIBRARY);
             const sentData = localStorage.getItem(STORAGE_KEYS.SENT);
+            const historyData = localStorage.getItem(STORAGE_KEYS.HISTORY);
 
             if (userData) state.user = { ...state.user, ...JSON.parse(userData) };
             if (libraryData && JSON.parse(libraryData).length > 0) state.library = JSON.parse(libraryData);
             if (sentData) state.sentQueue = JSON.parse(sentData);
+            if (historyData) state.history = JSON.parse(historyData);
         }
         
         init();
